@@ -1,4 +1,4 @@
-#define PIX_gre 0x16537e
+#define PIX_gre 0xfc00ff
 #define PIX_red 0xc90000
 #define PIX_whi 0x00ff11
 
