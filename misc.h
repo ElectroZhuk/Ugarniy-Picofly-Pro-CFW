@@ -6,6 +6,8 @@
 
 void put_pixel(uint32_t pixel_grb);
 
+void put_pixel_success(uint32_t pixel_rgb);
+
 void halt_with_error(uint32_t err, uint32_t bits);
 
 void gpio_disable_input_output(int pin);
