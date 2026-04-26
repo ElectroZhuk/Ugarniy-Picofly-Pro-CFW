@@ -3,11 +3,11 @@ on:
   workflow_dispatch:
     inputs:
       release_title:
-        description: 'Название релиза (оставь пустым для автоматического)'
+        description: 'Release tittle (leave empty for auto)'
         required: false
         default: ''
       release_description:
-        description: 'Описание релиза'
+        description: 'Release description'
         required: false
         default: ''
 permissions:
