@@ -185,8 +185,7 @@ int main()
         // force success LED display
         put_pixel(0); // clear any previous LED state
         sleep_ms(50);
-        put_pixel(PIX_whi); // show white success
-        sleep_ms(200); // longer delay to ensure visibility
+        put_pixel_success(PIX_whi); // show white success
         
         if ((count_fuses() & 1) != boot_slot)
         {
