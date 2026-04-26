@@ -13,7 +13,7 @@
 * `Blue` indicates glitching,
 * `Light blue` indicates training,
 * `Beige` indicates comparison to stored training data,
-* `Yellow/Orange` indicates writing `sdloader` to `BOOT0` and/or success,
+* `Green` indicates writing `sdloader` to `BOOT0` and/or success (success fades out for 1.5s, you won`t miss it),
 * `Red` indicates an issue with your modchip installation (otherwise known as a fault or error code).
 
 ### Fault description/Error codes
