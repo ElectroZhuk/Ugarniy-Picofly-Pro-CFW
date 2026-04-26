@@ -139,6 +139,68 @@ void put_pixel(uint32_t pixel_rgb)
         gpio_init(led_pin());
 }
 
+// smooth fade-out for a successful LED
+void put_pixel_success(uint32_t pixel_rgb)
+{
+    static bool led_enabled = false;
+
+    if (is_pico())
+    {
+        gpio_init(led_pin());
+        if (pixel_rgb) {
+            gpio_set_dir(led_pin(), true);
+            gpio_put(led_pin(), 1);
+        }
+        return;
+    }
+
+    uint8_t red   = (pixel_rgb >> 16) & 0xFF;
+    uint8_t green = (pixel_rgb >> 8)  & 0xFF;
+    uint8_t blue  =  pixel_rgb        & 0xFF;
+
+    uint32_t pixel_grb = ((uint32_t)green << 16) | ((uint32_t)red << 8) | blue;
+
+    ws2812_program_init(pio0, 3, ws_pio_offset, led_pin(), 800000, true);
+
+    if (!led_enabled && pwr_pin() != 31)
+    {
+        led_enabled = true;
+        gpio_init(pwr_pin());
+        gpio_set_drive_strength(pwr_pin(), GPIO_DRIVE_STRENGTH_12MA);
+        gpio_set_dir(pwr_pin(), true);
+        gpio_put(pwr_pin(), 1);
+        sleep_us(100);
+    }
+
+    pio_sm_put_blocking(pio0, 3, pixel_grb << 8u);
+    sleep_us(30);
+
+    if (pixel_rgb) {
+        sleep_ms(200);
+
+        const uint32_t steps = 60;
+        const uint32_t step_delay_us = 25000;
+
+        for (uint32_t i = steps; i > 0; i--) {
+            uint8_t nr = (uint8_t)((uint32_t)red   * i * i / (steps * steps));
+            uint8_t ng = (uint8_t)((uint32_t)green * i * i / (steps * steps));
+            uint8_t nb = (uint8_t)((uint32_t)blue  * i * i / (steps * steps));
+
+            uint32_t grb = ((uint32_t)ng << 16) | ((uint32_t)nr << 8) | nb;
+            pio_sm_put_blocking(pio0, 3, grb << 8u);
+            sleep_us(step_delay_us);
+        }
+
+        pio_sm_put_blocking(pio0, 3, 0);
+        sleep_us(30);
+    }
+
+    pio_sm_set_enabled(pio0, 3, false);
+
+    if (!is_tiny())
+        gpio_init(led_pin());
+}
+
 // optimized: direct register access
 void gpio_disable_input_output(int pin)
 {
