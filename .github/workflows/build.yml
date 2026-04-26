@@ -1,6 +1,15 @@
 name: Build PicoFly binaries
 on:
   workflow_dispatch:
+    inputs:
+      release_title:
+        description: 'Название релиза (оставь пустым для автоматического)'
+        required: false
+        default: ''
+      release_description:
+        description: 'Описание релиза'
+        required: false
+        default: ''
 permissions:
   contents: write
 jobs:
@@ -68,7 +77,7 @@ jobs:
           USK_VERSION_LO=$(sed -n 's/#define VER_LO \([0-9]*\)/\1/p' $GITHUB_WORKSPACE/usk/config.h)
           USK_VERSION_HI=$(sed -n 's/#define VER_HI \([0-9]*\)/\1/p' $GITHUB_WORKSPACE/usk/config.h)
           USK_VERSION=${USK_VERSION_HI}.${USK_VERSION_LO}
-          RELEASE_TAG=PicoFly_${USK_VERSION}_$(date +"%Y.%m.%d_%H-%M")
+          RELEASE_TAG=PitikFly_${USK_VERSION}_$(date +"%Y.%m.%d_%H-%M")
           echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
           echo "release_tag=$RELEASE_TAG"
           
@@ -76,6 +85,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.tag.outputs.release_tag }}
+          name: ${{ inputs.release_title != '' && inputs.release_title || steps.tag.outputs.release_tag }}
+          body: ${{ inputs.release_description }}
           files: |
             build/usk/firmware.uf2
             build/usk/update.bin
