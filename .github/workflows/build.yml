@@ -1,88 +1,92 @@
-name: Build PicoFly binaries
+name: Build PitikFly binaries
+
 on:
   workflow_dispatch:
     inputs:
       release_title:
-        description: 'Release tittle (leave empty for auto)'
+        description: 'Release title (leave empty for auto)'
         required: false
         default: ''
       release_description:
         description: 'Release description'
         required: false
         default: ''
+
 permissions:
   contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential
-  
-      - name: Checkout lulle2007200/usk
-        uses: actions/checkout@v3
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential git
+
+      - name: Checkout Picofly-Custom-FW (this repo)
+        uses: actions/checkout@v4
         with:
-          repository: lulle2007200/usk
-          path: usk
-      
-      - name: Checkout rehius/busk
-        uses: actions/checkout@v3
+          path: Picofly-Custom-FW
+
+      - name: Checkout DefenderOfHyrule/busk
+        uses: actions/checkout@v4
         with:
-          repository: rehius/busk
+          repository: DefenderOfHyrule/busk
           path: busk
 
       - name: Checkout raspberrypi/pico-sdk
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: raspberrypi/pico-sdk
           path: pico-sdk
           submodules: recursive
-          
+
       - name: Set PICO_SDK_PATH environment variable
-        run: |
-          echo "PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk" >> $GITHUB_ENV
+        run: echo "PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk" >> $GITHUB_ENV
 
-      - name: Create symbolic link of pico_sdk_import.cmake in busk and usk sources
+      - name: Create symbolic links of pico_sdk_import.cmake
         run: |
-          ln -s $PICO_SDK_PATH/external/pico_sdk_import.cmake $GITHUB_WORKSPACE/busk/pico_sdk_import.cmake
-          ln -s $PICO_SDK_PATH/external/pico_sdk_import.cmake $GITHUB_WORKSPACE/usk/pico_sdk_import.cmake
+          ln -sf "$PICO_SDK_PATH/external/pico_sdk_import.cmake" "$GITHUB_WORKSPACE/busk/pico_sdk_import.cmake"
+          ln -sf "$PICO_SDK_PATH/external/pico_sdk_import.cmake" "$GITHUB_WORKSPACE/Picofly-Custom-FW/pico_sdk_import.cmake"
 
-      - name: Create 'generated' directory in usk source directory
-        run: mkdir -p $GITHUB_WORKSPACE/usk/generated
+      - name: Create 'generated' directory
+        run: mkdir -p "$GITHUB_WORKSPACE/Picofly-Custom-FW/generated"
 
       - name: Build busk
-        run: | 
-          cp $GITHUB_WORKSPACE/pico-sdk/src/rp2_common/pico_crt0/rp2040/memmap_default.ld $GITHUB_WORKSPACE/pico-sdk/src/rp2_common/pico_crt0/rp2040/memmap_default.ld.bak
-          sed -i 's/RAM(rwx) : ORIGIN =  0x20000000, LENGTH = 256k/RAM(rwx) : ORIGIN = 0x20038000, LENGTH = 32k/g' $GITHUB_WORKSPACE/pico-sdk/src/rp2_common/pico_crt0/rp2040/memmap_default.ld
-          mkdir -p $GITHUB_WORKSPACE/build/busk
-          cd $GITHUB_WORKSPACE/build/busk
-          cmake $GITHUB_WORKSPACE/busk
+        run: |
+          MEMMAP_PATH="$GITHUB_WORKSPACE/pico-sdk/src/rp2_common/pico_crt0/rp2040/memmap_default.ld"
+          cp "$MEMMAP_PATH" "$MEMMAP_PATH.bak"
+          sed -i 's/RAM(rwx) : ORIGIN =  0x20000000, LENGTH = 256k/RAM(rwx) : ORIGIN = 0x20038000, LENGTH = 32k/g' "$MEMMAP_PATH"
+
+          mkdir -p "$GITHUB_WORKSPACE/build/busk"
+          cd "$GITHUB_WORKSPACE/build/busk"
+          cmake "$GITHUB_WORKSPACE/busk"
           make
-          cd $GITHUB_WORKSPACE
-          rm -f $GITHUB_WORKSPACE/pico-sdk/src/rp2_common/pico_crt0/rp2040/memmap_default.ld
-          mv $GITHUB_WORKSPACE/pico-sdk/src/rp2_common/pico_crt0/rp2040/memmap_default.ld.bak $GITHUB_WORKSPACE/pico-sdk/src/rp2_common/pico_crt0/rp2040/memmap_default.ld
-      
-      - name: Build usk
-        run: | 
-          mkdir -p $GITHUB_WORKSPACE/build/usk
-          cd $GITHUB_WORKSPACE/build/usk
-          cmake $GITHUB_WORKSPACE/usk
+
+          rm -f "$MEMMAP_PATH"
+          mv "$MEMMAP_PATH.bak" "$MEMMAP_PATH"
+
+      - name: Build usk (Picofly-Custom-FW)
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/build/usk"
+          cd "$GITHUB_WORKSPACE/build/usk"
+          cmake "$GITHUB_WORKSPACE/Picofly-Custom-FW"
           make
-          python3 $GITHUB_WORKSPACE/usk/prepare.py
-          cd $GITHUB_WORKSPACE
+          python3 "$GITHUB_WORKSPACE/Picofly-Custom-FW/prepare.py"
 
       - name: Generate release tag
         id: tag
         run: |
-          USK_VERSION_LO=$(sed -n 's/#define VER_LO \([0-9]*\)/\1/p' $GITHUB_WORKSPACE/usk/config.h)
-          USK_VERSION_HI=$(sed -n 's/#define VER_HI \([0-9]*\)/\1/p' $GITHUB_WORKSPACE/usk/config.h)
-          USK_VERSION=${USK_VERSION_HI}.${USK_VERSION_LO}
-          RELEASE_TAG=PitikFly_${USK_VERSION}_$(date +"%Y.%m.%d_%H-%M")
+          USK_VERSION_LO=$(sed -n 's/#define VER_LO \([0-9]*\)/\1/p' "$GITHUB_WORKSPACE/Picofly-Custom-FW/config.h")
+          USK_VERSION_HI=$(sed -n 's/#define VER_HI \([0-9]*\)/\1/p' "$GITHUB_WORKSPACE/Picofly-Custom-FW/config.h")
+          USK_VERSION="${USK_VERSION_HI}.${USK_VERSION_LO}"
+          RELEASE_TAG="PitikFly_${USK_VERSION}_$(date +"%Y.%m.%d_%H-%M")"
           echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
-          echo "release_tag=$RELEASE_TAG"
-          
+          echo "Release tag: $RELEASE_TAG"
+
       - name: Create a release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.release_tag }}
           name: ${{ inputs.release_title != '' && inputs.release_title || steps.tag.outputs.release_tag }}
